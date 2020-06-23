@@ -1,0 +1,2 @@
+#POST https://dnolights-api.azurewebsites.net/test HTTP/1.1
+POST https://localhost:5001/test HTTP/1.1

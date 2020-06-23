@@ -1,0 +1,36 @@
+﻿@page "/queue/{UserId}"
+@using System.Timers
+
+You are currently in the queue
+
+@code
+{
+    [Inject]
+    public IHttpClientFactory HttpClientFactory { get; set; }
+
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
+
+    [Parameter]
+    public string UserId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        var httpClient = HttpClientFactory.CreateClient("api");
+
+        var timer = new Timer(1000);
+
+        timer.Elapsed += async (sender, args) => {
+            var response = await httpClient.GetAsync($"/amiincontrol/{UserId}");
+
+            if (response.IsSuccessStatusCode)
+                if (await response.Content.ReadAsStringAsync() == "yes")
+                {
+                    timer.Stop();
+                    NavigationManager.NavigateTo($"/control/{UserId}");
+                }
+        };
+
+        timer.Start();
+    }
+}

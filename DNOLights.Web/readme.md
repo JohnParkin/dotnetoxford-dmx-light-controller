@@ -1,0 +1,1 @@
+This folder will contain the Blazor mobile webapp that the audience can use to participate.

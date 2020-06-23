@@ -1,0 +1,1 @@
+This library contains shared helper classes for web communication. Eg. to communicate with the API and message queues.

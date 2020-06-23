@@ -1,0 +1,73 @@
+﻿@page "/control/{UserId}"
+@using System.Net
+@using System.Reactive.Linq
+@using System.Text
+@using DNOLights.Web.Models
+@using Newtonsoft.Json
+
+<button @onclick="OnButtonClick">Test command</button>
+
+<div class="form-group">
+    <label for="slider-pan">Pan</label>
+    <input id="slider-pan" type="range" min="0" max="255" step="5" class="form-control" @bind="Pan" @bind:event="oninput"/>
+</div>
+
+<div class="form-group">
+    <label for="slider-tilt">Tilt</label>
+    <input id="slider-tilt" type="range" min="0" max="255" step="5" class="form-control" @bind="Tilt" @bind:event="oninput"/>
+</div>
+
+<img id="headbanger-image" src="images/headbanger.jpg"/>
+
+@code
+{
+    [Inject]
+    public IHttpClientFactory HttpClientFactory { get; set; }
+
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
+
+    [Parameter]
+    public string UserId { get; set; }
+
+    private int _pan;
+    public int Pan
+    {
+        get => _pan;
+        set { _pan = value; OnSliderValueChanged(type: nameof(Pan), value: value); }
+    }
+
+    private int _tilt;
+    public int Tilt
+    {
+        get => _tilt;
+        set { _tilt = value; OnSliderValueChanged(type: nameof(Tilt), value: value); }
+    }
+
+    private event EventHandler<SliderEventArgs> SliderChangedEvent;
+
+    protected override void OnInitialized()
+    {
+        Observable.FromEventPattern<EventHandler<SliderEventArgs>, SliderEventArgs>(x => SliderChangedEvent += x, x => SliderChangedEvent -= x)
+            .Throttle(TimeSpan.FromMilliseconds(250))
+            .DistinctUntilChanged()
+            .Subscribe(async x =>
+            {
+                var response = await HttpClientFactory.CreateClient("api")
+                    .PostAsync("/slider", new StringContent(
+                        JsonConvert.SerializeObject(new {UserId, x.EventArgs.SliderType, x.EventArgs.Value}), Encoding.UTF8, "application/json"));
+
+                if (response.StatusCode == HttpStatusCode.Conflict)
+                    NavigationManager.NavigateTo("/");
+            });
+
+        base.OnInitialized();
+    }
+
+    private async Task OnButtonClick() =>
+        await HttpClientFactory.CreateClient("api")
+            .PostAsync("/test", new StringContent(""));
+
+    private void OnSliderValueChanged(string type, int value) =>
+        SliderChangedEvent?.Invoke(this, new SliderEventArgs {SliderType = type, Value = value});
+}

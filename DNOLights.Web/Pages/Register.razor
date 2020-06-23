@@ -1,0 +1,29 @@
+﻿@page "/"
+@using System.Text
+@using Newtonsoft.Json
+@inject NavigationManager NavigationManager
+@inject IHttpClientFactory HttpClientFactory
+
+<form>
+    <div class="form-group">
+        <label for="username">Name</label>
+        <input type="text" class="form-control" id="username" aria-describedby="username" placeholder="Enter name" @bind="@UserName">
+        <small class="form-text text-muted">Please enter your name to join the queue</small>
+    </div>
+    <button type="button" class="btn btn-primary" @onclick="OnSubmit">Submit</button>
+</form>
+
+@code
+{
+    public string UserName { get; set; }
+
+    public async Task OnSubmit()
+    {
+        var response = await HttpClientFactory.CreateClient("api")
+            .PostAsync("/register", new StringContent(
+                JsonConvert.SerializeObject(new {UserName}), Encoding.UTF8, "application/json"));
+
+        if (response.IsSuccessStatusCode)
+            NavigationManager.NavigateTo($"queue/{Guid.Parse((await response.Content.ReadAsStringAsync()).Trim('\"'))}");
+    }
+}

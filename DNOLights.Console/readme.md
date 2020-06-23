@@ -1,0 +1,1 @@
+This folder will contain the console app that is run on the laptop connected to the hardware. It'll receive commands from the message queue, and control the hardware via John's code.

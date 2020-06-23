@@ -1,0 +1,62 @@
+﻿@page "/"
+@inject IMessageQueueHelperFactory MessageQueueHelperFactory
+@inject ILogger<Index> Logger
+@using DNOLights.Dashboard.Models
+@using DNOLights.Shared
+@using DNOLights.Shared.MessageQueue
+@using Microsoft.Extensions.Logging
+@using Newtonsoft.Json
+
+<ul class="list-group">
+    @foreach (var user in Users) {
+        <li class="list-group-item">@user</li>
+    }
+</ul>
+
+User in Control: @UserInControl
+
+@code
+{
+    [Inject]
+    public IHttpClientFactory HttpClientFactory { get; set; }
+
+    private List<string> Users { get; set; } = new List<string>();
+
+    private string UserInControl { get; set; }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            MessageQueueHelperFactory.Create(Queues.UserQueueChange)
+                .SubscribeAsync(async x =>
+                {
+                    Logger.LogInformation($"Received message that queue has changed, so querying current queue...");
+
+                    var response = await HttpClientFactory.CreateClient("api")
+                        .GetAsync("/queue");
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var users = JsonConvert.DeserializeObject<List<User>>(
+                            await response.Content.ReadAsStringAsync());
+
+                        Users = users.Select(u => u.UserName).ToList();
+                    }
+
+                    await InvokeAsync(StateHasChanged);
+                });
+
+            MessageQueueHelperFactory.Create(Queues.NewUserInControl)
+                .SubscribeAsync(async x =>
+                {
+                    Logger.LogInformation($"Received message that new user has control of the hardware");
+                    UserInControl = x;
+                    await InvokeAsync(StateHasChanged);
+                });
+        }
+
+        return base.OnAfterRenderAsync(firstRender);
+    }
+}
+
